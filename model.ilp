@@ -1,0 +1,13 @@
+\ Model _copy
+\ LP format - for model browsing. Use MPS format to capture full model detail.
+Minimize
+ 
+Subject To
+ charging_demand_3: x[3,0] + x[3,1] + x[3,2] + x[3,3] + x[3,4] = 3
+ not_charged_if_not_parked_3_0: x[3,0] = 0
+ not_charged_if_not_parked_3_2: x[3,2] = 0
+ not_charged_if_not_parked_3_4: x[3,4] = 0
+Bounds
+Binaries
+ x[3,0] x[3,1] x[3,2] x[3,3] x[3,4]
+End
