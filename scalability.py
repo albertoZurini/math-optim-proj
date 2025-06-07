@@ -65,7 +65,7 @@ if __name__ == "__main__":
         
         MGCDCH = test.MinimizingGridCapacityDifferentChargersHeuristics(J, H, beginning_time_slot, charger_types)
         MGCDCH2 = test.MinimizingGridCapacityDifferentChargersHeuristics2(J, H, beginning_time_slot, charger_types, 
-                                                                          optimal_grid_capacity, optimal_grid_capacity*0.1)
+                                                                          optimal_grid_capacity, optimal_grid_capacity*0.2)
 
         start3 = time.time()
         wG, wgT, sigmas, schedule, bs, wG_bs = MGCDCH.heuristic_grid_capacity_minimization(J, len(H))
@@ -89,15 +89,20 @@ if __name__ == "__main__":
                                                                                 100 if multiplier < 10 else 1000, 
                                                                                 100 if multiplier < 10 else 1000)
         end2 = time.time()
-                
+        
+        print("=========================")
+        print(optimal_n_max, optimal_ls_max)
+        instance = (J, beginning_time_slot, H, charger_types)
         times.append({
             "o": end-start,
             "h": end2-start2,
             "generation": end3-start3,
-            "delta": solution.wG - optimal_grid_capacity,
+            "optimal_solution": optimal_grid_capacity,
+            "heuristic_solution": solution.wG,
             'multiplier': multiplier,
             'optimal_n_max': optimal_n_max,
-            'optimal_ls_max': optimal_ls_max
+            'optimal_ls_max': optimal_ls_max,
+            "instance": instance
         })
         
         with open("times.pkl", "wb") as f:

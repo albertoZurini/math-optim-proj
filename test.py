@@ -992,6 +992,7 @@ class MinimizingGridCapacityDifferentChargersHeuristics2:
         optimal_n_max = 0
         optimal_ls_max = 0
         
+        optim_found = False
         # How many chargers should be replaced?
         j = 0
         while j < n_max:
@@ -1017,14 +1018,19 @@ class MinimizingGridCapacityDifferentChargersHeuristics2:
                         optimal_n_max = j
                         optimal_ls_max = i
                         j = n_max
+                        optim_found = True
                         break
                 else:
                     # Exploration
                     if random.random() < 0.1: # 10% chance to accept a worse solution
                         S = S_prime.copy()
-                        
+                    
             j += 1
                 
+        if not optim_found:
+            optimal_n_max = j
+            optimal_ls_max = i
+ 
         return S_star, optimal_n_max, optimal_ls_max
 
 if __name__ == "__main__":
