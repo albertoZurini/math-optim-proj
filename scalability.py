@@ -32,11 +32,11 @@ def generate_instance(N_cars, N_chargers, num_time_slots):
     
     e_min = min(J, key=lambda x: x.e).e
     e_max = max(J, key=lambda x: x.e).e
-    charger_types = [e_max, e_min]
-    for _ in range(N_chargers - 2):
-        c = e_min + (e_max - e_min) * random.random()
-        c = math.ceil(c)
-        charger_types.append(c)
+    # charger_types = [e_max, e_min]
+    # for _ in range(N_chargers - 2):
+    #     c = e_min + (e_max - e_min) * random.random()
+    #     c = math.ceil(c)
+    #     charger_types.append(c)
     
     return J, beginning_time_slot, H, charger_types
 
@@ -44,7 +44,11 @@ if __name__ == "__main__":
     times = []
     gurobi_failed = False
     
-    for multiplier in tqdm([5,10,15,20,30,40,50]):
+    multipliers = [3,4,5,6,7,8,9,10,15,20,30,40,50]
+    
+    for m1 in multipliers:
+        for m2 in multipliers:
+            for
         J, beginning_time_slot, H, charger_types = generate_instance(
             multiplier, 
             multiplier, 
@@ -86,8 +90,8 @@ if __name__ == "__main__":
         
         start2 = time.time()
         solution, optimal_n_max, optimal_ls_max = MGCDCH2.iterated_local_search(initial_solution, 
-                                                                                100 if multiplier < 10 else 1000, 
-                                                                                100 if multiplier < 10 else 1000)
+                                                                                1000 if multiplier < 10 else 10000, 
+                                                                                1000 if multiplier < 10 else 10000)
         end2 = time.time()
         
         print("=========================")
@@ -112,17 +116,3 @@ if __name__ == "__main__":
     print(times)
     with open("times.pkl", "wb") as f:
         pickle.dump(times, f)
-    # sample:
-    # times = [{'o': 0.04794454574584961, 'h': 0.34923481941223145, 'delta': 2.0}, {'o': 0.1030266284942627, 'h': 0.374739408493042, 'delta': 7.0}, {'o': 0.23575353622436523, 'h': 0.3360159397125244, 'delta': 4.0}, {'o': 0.4121570587158203, 'h': 0.3348729610443115, 'delta': 18.0}, {'o': None, 'h': 47.16238760948181, 'delta': None}, {'o': None, 'h': 44.9217529296875, 'delta': None}, {'o': None, 'h': 46.07182168960571, 'delta': None}]
-
-    
-    # y1 = []
-    # for d in times:
-    #     if d["o"] is not None:
-    #         y1.append(d["o"])
-    # y2 = [d["h"] for d in times]
-    # 
-    # plt.plot(y1, label="Gurobi time")
-    # plt.plot(y2, label="Heuristic time")
-    # plt.legend()
-    # plt.show()
