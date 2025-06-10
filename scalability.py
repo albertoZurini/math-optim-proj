@@ -5,6 +5,7 @@ from tqdm import tqdm
 import math
 from matplotlib import pyplot as plt
 import pickle
+import os
 
 # Helper function to get alpha based on p1j (hours)
 def get_alpha_for_demand(p1j_hours, total_N_cars_in_instance, current_car_idx):
@@ -30,12 +31,9 @@ def get_alpha_for_demand(p1j_hours, total_N_cars_in_instance, current_car_idx):
         return random.uniform(0.1, 0.7)
     elif 4.0 <= p1j_hours < 5.0:
         return random.uniform(0.1, 0.6)
-    elif p1j_hours >= 5.0:  # Paper: [5,6), assuming >=5 if last category
+    elif p1j_hours >= 5.0:
         return random.uniform(0.1, 0.5)
     else:
-        # This case should ideally not be hit if e_kwh >= 5.5 (since 5.5/11 = 0.5)
-        # If p1j_hours is < 0.5 (but positive), use alpha for the first documented range.
-        # print(f"Warning: p1j_hours ({p1j_hours:.2f}) < 0.5. Using alpha for [0.5,1) range.")
         return random.uniform(0.1, 1.0)
 
 def generate_instance(N_cars, SLOT_DURATION_HOURS=1.0):
@@ -44,8 +42,6 @@ def generate_instance(N_cars, SLOT_DURATION_HOURS=1.0):
 
     Args:
         N_cars (int): Number of charging demands (vehicles).
-        N_physical_chargers (int): Total number of physical chargers available at the station.
-                                   This parameter is passed through for the solver.
         SLOT_DURATION_HOURS (float): Duration of a single time slot in hours.
 
     Returns:
@@ -54,7 +50,6 @@ def generate_instance(N_cars, SLOT_DURATION_HOURS=1.0):
             simulation_start_time_hours: The earliest vehicle arrival time in hours (this is t_0).
             H: List of time slot indices [0, 1, ..., T-1].
             charger_types_kW: List of charger power ratings in kW [11.0, 22.0, 43.0].
-            N_physical_chargers: The input N_physical_chargers, passed through.
     """
 
     charger_types_kW = [11.0, 22.0, 43.0]  # As per paper
@@ -133,49 +128,26 @@ def generate_instance(N_cars, SLOT_DURATION_HOURS=1.0):
     
     return J_slot_based, simulation_start_time_hours, H, charger_types_kW
 
-
-##def generate_instance(N_cars, N_chargers, num_time_slots):
-##    J = []
-##    i = 0
-##    while i < N_cars:
-##        r = int(random.random() * num_time_slots * 0.2)
-##        d = r + int(random.random() * num_time_slots * 0.8)
-##        if d - r < 3: continue
-##        e = 10 + int(random.random()*50)
-##        cd = test.ChargingDemand(r, d, e)
-##        J.append(cd)
-##        i += 1
-##    
-##    beginning_time_slot = min(J, key=lambda x: x.r).r
-##    
-##    H = [i for i in range(
-##        max(J, key=lambda x: x.d).d - beginning_time_slot,
-##        )] # Time slots
-##
-##    MGCDC = test.MinimizingGridCapacityDifferentChargers(J, H, beginning_time_slot, [])
-##    m, demands, charger_powers = MGCDC.minimum_number_of_diverse_chargers()
-##    if m > N_chargers:
-##        print("INCREASED NUMBER OF CHARGERS")
-##    N_chargers = max(N_chargers, m)
-##    
-##    e_min = min(J, key=lambda x: x.e).e
-##    e_max = max(J, key=lambda x: x.e).e
-##    # charger_types = [e_max, e_min]
-##    # for _ in range(N_chargers - 2):
-##    #     c = e_min + (e_max - e_min) * random.random()
-##    #     c = math.ceil(c)
-##    #     charger_types.append(c)
-##    
-##    return J, beginning_time_slot, H, charger_types
-
 if __name__ == "__main__":
     times = []
     gurobi_failed = False
     
     multipliers = [3,4,5,6,7,8,9,10,15,20,30,40,50]
     
+    if os.path.exists("times.pkl"):
+        with open("times.pkl", "rb") as f:
+            times = pickle.load(f)
+    
+    already_done = []
+    for i in range(len(times)):
+        already_done.append((times[i]["num_cars"], times[i]["num_chargers"]))
+    
     for num_cars in tqdm(multipliers):
         for num_chargers in [int(m/2) for m in multipliers]:
+            
+            if (num_cars, num_chargers) in already_done:
+                continue
+            
             J, beginning_time_slot, H, charger_types = generate_instance(num_cars)
                         
             try:
