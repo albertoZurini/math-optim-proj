@@ -114,21 +114,34 @@ class MinimizingGridCapacitySameChargers:
             optim = int(minimum_grid_capacity.objVal)
             return optim
         else:
-            assert False
+            raise Exception("Gurobi couldn't find an optimal solution")
     
     def get_max_flow(self, J, m_hat, S_V, intervals, interval_to_i):
+        """
+        Calculates the maximum flow of energy that can be distributed to a set of vehicles over specified time intervals,
+        considering vehicle availability, interval capacities, and maximum power constraints.
+        Args:
+            J (list): List of vehicle demand objects, each with attributes 'r' (ready time) and 'd' (deadline).
+            m_hat (float): Chargers to be activated simultaneously.
+            S_V (list): Mapping from source to vehicle (how much energy each vehicle needs).
+            intervals (list of tuple): List of time intervals, each represented as a tuple (start_time, end_time).
+            interval_to_i (dict): Mapping from interval start time to its index in the intervals list.
+        Returns:
+            float: The calculated maximum flow of energy that can be delivered to the vehicles within the given constraints.
+        """
+        
         # Calculate the matrix binding vehicles to intervals
         V_I = np.zeros((len(J), len(intervals)))
-        available_capacity = []
+        available_capacity = [] # maximum dispensable energy for each time interval
         
         for interval in intervals:
-            available_capacity.append(m_hat * (interval[1] - interval[0]))
+            available_capacity.append(m_hat * (interval[1] - interval[0])) # how many chargers * time interval
         
         for i in range(len(S_V)):
             # for each vehicle demand I have to put how much time this stays plugged in
-            residual = S_V[i]
+            residual = S_V[i] # residual energy
             
-            interesting_intervals = []
+            interesting_intervals = [] # Intervals when the car is plugged in and can be charged
             for interval in intervals:
                 if interval[0] >= J[i].r and interval[1] <= J[i].d:
                     interesting_intervals.append(interval)
@@ -142,7 +155,7 @@ class MinimizingGridCapacitySameChargers:
                 available_capacity[interval_id] -= how_much_time
                 if available_capacity[interval_id] < 0:
                     continue
-                V_I[i][interval_id] = how_much_time
+                V_I[i][interval_id] = how_much_time # time duration of the interval for which the vehicle is charged on the interval
                 residual -= how_much_time
         
         # Calculate interval to sink mapping
@@ -205,44 +218,44 @@ class MinimizingGridCapacitySameChargers:
         return m_hat
 
     
-##if __name__ == "__main__":
-##    J = [
-##        ChargingDemand(10, 13, 20),
-##        ChargingDemand(10, 13, 20),
-##        ChargingDemand(8, 10, 20),
-##        ChargingDemand(10, 13, 20),
-##        ChargingDemand(10, 13, 20),
-##        ChargingDemand(9, 12, 30)
-##    ]
-##
-##    beginning_time_slot = min(J, key=lambda x: x.r).r
-##    H = [i for i in range(
-##        max(J, key=lambda x: x.d).d - beginning_time_slot,
-##        )] # Time slots
-##    
-##    MGCSC = MinimizingGridCapacitySameChargers(J, H, beginning_time_slot)
-##    m = MGCSC.minimum_number_of_identical_chargers()
-##    
-##    assert m == 5
-##    
-##    print("Optimal number of chargers", m)
-##    
-##    P = [] # Charging time of vehicles
-##    w = 10 # Power of each charger
-##    for j in J:
-##        P.append(j.e/w)
-##        
-##    optim = MGCSC.solve(P)
-##    
-##    assert optim == 40
-##    
-##    print("Optimal grid power", optim)
-##    
-##    max_chargers = MGCSC.max_chargers_activated_simultaneously()
-##    
-##    assert max_chargers == 4
-##    
-##    print("Max chargers activated simultaneously", max_chargers)
+if __name__ == "__main__":
+    J = [
+        ChargingDemand(10, 13, 20),
+        ChargingDemand(10, 13, 20),
+        ChargingDemand(8, 10, 20),
+        ChargingDemand(10, 13, 20),
+        ChargingDemand(10, 13, 20),
+        ChargingDemand(9, 12, 30)
+    ]
+
+    beginning_time_slot = min(J, key=lambda x: x.r).r
+    H = [i for i in range(
+        max(J, key=lambda x: x.d).d - beginning_time_slot,
+        )] # Time slots
+    
+    MGCSC = MinimizingGridCapacitySameChargers(J, H, beginning_time_slot)
+    m = MGCSC.minimum_number_of_identical_chargers()
+    
+    assert m == 5
+    
+    print("Optimal number of chargers", m)
+    
+    P = [] # Charging time of vehicles
+    w = 10 # Power of each charger
+    for j in J:
+        P.append(j.e/w)
+        
+    optim = MGCSC.solve(P)
+    
+    assert optim == 40
+    
+    print("Optimal grid power", optim)
+    
+    max_chargers = MGCSC.max_chargers_activated_simultaneously()
+    
+    assert max_chargers == 4
+    
+    print("Max chargers activated simultaneously", max_chargers)
 
 # SECOND PART OF THE PAPER: DISTINCT TYPES OF CHARGERS
 
@@ -267,7 +280,7 @@ class MinimizingGridCapacityDifferentChargers:
         for j_i, j_demand in enumerate(J):
             r = j_demand.r - self.beginning_time_slot
             d = j_demand.d - self.beginning_time_slot
-            lj = required_charging_power(j_demand) # Power needed by current demand
+            wlj = required_charging_power(j_demand) # Power needed by current demand
             # assert lj in self.charger_types # the charging power should be available
 
             # --- Corresponds to Algorithm 2 Line 4: Find Sj ---
@@ -289,7 +302,7 @@ class MinimizingGridCapacityDifferentChargers:
             if Sj: # If there are available chargers
                 suitable_charger_idx_in_Sj = -1
                 for k_sj, (charger_original_idx, charger_w_i) in enumerate(Sj):
-                    if charger_w_i >= lj: # Found first suitable charger (wi >= wlj)
+                    if charger_w_i >= wlj: # Found first suitable charger (wi >= wlj)
                         suitable_charger_idx_in_Sj = k_sj
                         break
                 
@@ -307,7 +320,7 @@ class MinimizingGridCapacityDifferentChargers:
                     charger_to_upgrade_original_idx = Sj[-1][0] # Last in Sj is highest power (but still < lj)
                     
                     # Upgrade its power
-                    active_charger_powers[charger_to_upgrade_original_idx] = lj
+                    active_charger_powers[charger_to_upgrade_original_idx] = wlj
                     # Assign demand j to this now-upgraded charger
                     active_chargers_schedules[charger_to_upgrade_original_idx][r:d] = j_i + 1
                     found_charger_to_assign = True
@@ -318,7 +331,7 @@ class MinimizingGridCapacityDifferentChargers:
                 new_charger_schedule = np.zeros(self.num_time_slots)
                 new_charger_schedule[r:d] = j_i + 1
                 active_chargers_schedules.append(new_charger_schedule)
-                active_charger_powers.append(lj)
+                active_charger_powers.append(wlj)
                 # m implicitly increments by len(active_charger_powers)
 
         self.m = len(active_charger_powers)
@@ -430,72 +443,72 @@ class MinimizingGridCapacityDifferentChargers:
             
             return wG_value, x_matrix, y_matrix, z_matrix
         else:
-            assert True
+            raise Exception("Gurobi couldn't find an optimal solution to the problem!")
 
-##if __name__ == "__main__":
-##    J = [
-##        ChargingDemand(10, 13, 20),
-##        ChargingDemand(10, 13, 20),
-##        ChargingDemand(8, 10, 20),
-##        ChargingDemand(10, 13, 20),
-##        ChargingDemand(10, 13, 20),
-##        ChargingDemand(9, 12, 30)
-##    ]
-##
-##    beginning_time_slot = min(J, key=lambda x: x.r).r
-##    H = [i for i in range(
-##        max(J, key=lambda x: x.d).d - beginning_time_slot,
-##        )] # Time slots
-##    charger_types = [10, 20, 30]
-##    
-##    MGCDC = MinimizingGridCapacityDifferentChargers(J, H, beginning_time_slot, charger_types)
-##    
-##    m, demands, charger_powers = MGCDC.minimum_number_of_diverse_chargers()
-##    
-##    ### DATA FROM THE PAPER
-##    X = np.array([
-##        [1, 0, 0, 0, 0],
-##        [0, 1, 0, 0, 0],
-##        [0, 0, 1, 0, 0],
-##        [0, 0, 1, 1, 0],
-##        [0, 0, 0, 0, 1],
-##        [0, 0, 0, 1, 0],
-##    ]) #  who's charging when
-##
-##    Y = np.array([
-##        [0, 1, 0, 0, 0, 0],
-##        [0, 0, 0, 1, 0, 0],
-##        [1, 0, 1, 0, 0, 0],
-##        [0, 0, 0, 0, 1, 0],
-##        [0, 0, 0, 0, 0, 1]
-##    ]) # V[i] is charging on W[j]
-##
-##    P = np.array([
-##        [1, 2, 1, 1, 1],
-##        [1, 3, 2, 2, 2],
-##        [1, 2, 1, 1, 1],
-##        [1, 2, 1, 1, 1],
-##        [1, 2, 1, 1, 1],
-##        [1, 2, 1, 1, 1]
-##    ]) # [i][j] how long to charge V[i] on W[j]
-##
-##    W = np.array([[30, 10, 20, 20, 20]]) # chargers power
-##    
-##    ### END DATA FROM PAPER
-##    
-##    cp = W @ Y @ X
-##    cp_comparison = cp == charger_powers
-##
-##    print("Charging powers vs optimal solution", cp_comparison)
-##    # Both True and False should appear in this array
-##    # This happens because the example in the text is an optimal solution
-##    # The one found is just to find the minimum number of chargers, so it will choose a 20kw rather than a 10kw
-##    
-##    optimal_grid_capacity, x_matrix, y_matrix, z_matrix = MGCDC.solve()
-##    
-##    assert optimal_grid_capacity == 30
-##    
-##    print("Optimal grid capacity", optimal_grid_capacity)
+if __name__ == "__main__":
+    J = [
+        ChargingDemand(10, 13, 20),
+        ChargingDemand(10, 13, 20),
+        ChargingDemand(8, 10, 20),
+        ChargingDemand(10, 13, 20),
+        ChargingDemand(10, 13, 20),
+        ChargingDemand(9, 12, 30)
+    ]
+
+    beginning_time_slot = min(J, key=lambda x: x.r).r
+    H = [i for i in range(
+        max(J, key=lambda x: x.d).d - beginning_time_slot,
+        )] # Time slots
+    charger_types = [10, 20, 30]
+    
+    MGCDC = MinimizingGridCapacityDifferentChargers(J, H, beginning_time_slot, charger_types)
+    
+    m, demands, charger_powers = MGCDC.minimum_number_of_diverse_chargers()
+    
+    ### DATA FROM THE PAPER
+    X = np.array([
+        [1, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0],
+        [0, 0, 1, 0, 0],
+        [0, 0, 1, 1, 0],
+        [0, 0, 0, 0, 1],
+        [0, 0, 0, 1, 0],
+    ]) #  who's charging when
+
+    Y = np.array([
+        [0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 1, 0, 0],
+        [1, 0, 1, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 1]
+    ]) # V[i] is charging on W[j]
+
+    P = np.array([
+        [1, 2, 1, 1, 1],
+        [1, 3, 2, 2, 2],
+        [1, 2, 1, 1, 1],
+        [1, 2, 1, 1, 1],
+        [1, 2, 1, 1, 1],
+        [1, 2, 1, 1, 1]
+    ]) # [i][j] how long to charge V[i] on W[j]
+
+    W = np.array([[30, 10, 20, 20, 20]]) # chargers power
+    
+    ### END DATA FROM PAPER
+    
+    cp = W @ Y @ X
+    cp_comparison = cp == charger_powers
+
+    print("Charging powers vs optimal solution", cp_comparison)
+    # Both True and False should appear in this array
+    # This happens because the example in the text is an optimal solution
+    # The one found is just to find the minimum number of chargers, so it will choose a 20kw rather than a 10kw
+    
+    optimal_grid_capacity, x_matrix, y_matrix, z_matrix = MGCDC.solve()
+    
+    assert optimal_grid_capacity == 30
+    
+    print("Optimal grid capacity", optimal_grid_capacity)
 
 ### SOLVE USING HEURISTICS ###
 
@@ -508,6 +521,7 @@ class MinimizingGridCapacityDifferentChargersHeuristics:
         self.charger_types = charger_types
 
     def calculate_lb(self, J):
+        # Lower bound for minimum grid capacity
         d = [j.d for j in J]
         r = [j.r for j in J]
         e = [j.e for j in J]
@@ -662,7 +676,7 @@ class MinimizingGridCapacityDifferentChargersHeuristics:
         # Select a random demand and assign it to a random type
         random_demand_idx = random.randint(0, len(new_solution.J) - 1)
         
-        # Now that I know who to replace, I have to find a new type that satisfies the constraints:
+        # Now that I know which one to replace, I have to find a new type that satisfies the constraints:
         # - l != sigma_j
         # - pjl <= dj - rj
         # pjl is the number of time slots needed to charge j on charger l
@@ -685,6 +699,7 @@ class MinimizingGridCapacityDifferentChargersHeuristics:
         
         new_solution.sigmas[random_demand_idx] = chosen_charger
         
+        # The perturbation is followed by algorithm 4
         wG, wgT, sigmas, schedule, _, _ = self.heuristic_grid_capacity_minimization(new_solution.J, len(new_solution.H))
         
         new_solution.sigmas = sigmas
@@ -706,7 +721,6 @@ class MinimizingGridCapacityDifferentChargersHeuristics:
 
             # Check if both 0s and 1s exist in the array
             if len(indices_of_zeros) == 0 or len(indices_of_ones) == 0:
-                # print("Warning: Array does not contain both 0s and 1s. No swap performed.")
                 return arr_copy # Return the copy of the original
 
             # Randomly select one index for a 0 and one index for a 1
@@ -872,6 +886,8 @@ class MinimizingGridCapacityDifferentChargersHeuristics:
         print(f"ILS Finished. Best solution S_star.wG={S_star.wG:.4f}")
         return S_star
 
+## IMPORTANT INFORMATION: the heuristic provided by the paper doesn't converge
+
 ##if __name__ == "__main__":
 ##    J = [
 ##        ChargingDemand(10, 13, 20),
@@ -924,11 +940,13 @@ class MinimizingGridCapacityDifferentChargersHeuristics2:
         which_demand = random.randint(0, len(S_prime.J) - 1)
         current_charger = S_prime.sigmas[which_demand]
         minimum_required_power = S_prime.J[which_demand].e / (S_prime.J[which_demand].d - S_prime.J[which_demand].r)
+        # The possible charger should satisfy power constraints and be different
         available_chargers = [c for c in S_prime.available_charger_types if c != current_charger and c >= minimum_required_power]
         which_charger = random.choice(available_chargers)
         S_prime.sigmas[which_demand] = which_charger
         
-        # Now I have to recalculate the schedule
+        # Now I have to recalculate the schedule, based on the new charger
+        # Basically I need to activate the charger in the beginning for at least how_many_time_slots_to_charge time units
         how_many_time_slots_to_charge = math.ceil(S_prime.J[which_demand].e / which_charger)
         row = S_prime.schedule[which_demand]
         beginning = S_prime.J[which_demand].r - S_prime.beginning_time_slot
@@ -941,9 +959,10 @@ class MinimizingGridCapacityDifferentChargersHeuristics2:
             else:
                 row_roi[i] = 1
         
-        assert sum(row_roi) == math.ceil(S_prime.J[which_demand].e / which_charger)
+        # Just checking that the whole amount of energy required by the vehicle can be satisfied by
+        # the charger in a sufficient number of time slot
+        assert sum(row_roi) == how_many_time_slots_to_charge
             
-        
         # Update schedule
         S_prime.schedule[which_demand][beginning:end] = row_roi
         
@@ -955,11 +974,6 @@ class MinimizingGridCapacityDifferentChargersHeuristics2:
 
             indices_of_zeros = np.where(arr_copy == 0)[0]
             indices_of_ones = np.where(arr_copy == 1)[0]
-
-            # Check if both 0s and 1s exist in the array
-            if len(indices_of_zeros) == 0 or len(indices_of_ones) == 0:
-                # print("Warning: Array does not contain both 0s and 1s. No swap performed.")
-                return arr_copy # Return the copy of the original
 
             # Randomly select one index for a 0 and one index for a 1
             idx_zero_to_swap = np.random.choice(indices_of_zeros)
