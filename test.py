@@ -971,9 +971,13 @@ class MinimizingGridCapacityDifferentChargersHeuristics2:
     def local_search(self, current_solution: Solution, which_demand) -> Solution:
         def swap_items_in_row(arr):
             arr_copy = arr.copy()
-
+            
             indices_of_zeros = np.where(arr_copy == 0)[0]
             indices_of_ones = np.where(arr_copy == 1)[0]
+            
+            # Check if both 0s and 1s exist in the arrayAdd commentMore actions
+            if len(indices_of_zeros) == 0 or len(indices_of_ones) == 0:
+                return arr_copy # Return the copy of the originalAdd comment
 
             # Randomly select one index for a 0 and one index for a 1
             idx_zero_to_swap = np.random.choice(indices_of_zeros)
@@ -1071,7 +1075,7 @@ if __name__ == "__main__":
     wG, wgT, sigmas, schedule, bs, wG_bs = MGCDCH.heuristic_grid_capacity_minimization(J, len(H))
     initial_solution = Solution(J, sigmas, schedule, beginning_time_slot, charger_types)
     
-    solution = MGCDCH2.iterated_local_search(initial_solution, 1000, 100)
+    solution, optimal_n_max, optimal_ls_max = MGCDCH2.iterated_local_search(initial_solution, 1000, 100)
     print("Initial solution:", initial_solution.wG)
     print("New solution:", solution.wG)
     pass
